@@ -1,6 +1,8 @@
 /** @jsxImportSource frog/jsx */
 
+import { CryptoRidesNFTAbi } from "@/app/abis/CryptoRidesNFT";
 import { getUserData, isWhitelisted } from "@/app/utils/client";
+import { contractConfig, ipfsNftMetadataHash } from "@/app/utils/config";
 import { Button, Frog, TextInput } from "frog";
 import { devtools } from "frog/dev";
 import { neynar } from "frog/hubs";
@@ -23,8 +25,27 @@ const app = new Frog({
 // export const runtime = 'edge'
 
 app.frame("/", (c) => {
+  return c.res({
+    image: "/SuiteViewCryptoRidesMiamiBackground.png",
+    intents: [
+      <Button action="/donate">Donate</Button>,
+      <Button.Transaction target="/mintTicket">Mint Ticket</Button.Transaction>,
+      // <Button value="five">5</Button>,
+      // <Button value="ten">10</Button>,
+      // <Button value="twenty">20</Button>,
+    ],
+  });
+});
+
+app.frame("/donate", async (c) => {
+  const { frameData, verified } = c;
+  const userData = await getUserData(frameData?.fid!);
   const { buttonValue, inputText, status } = c;
   const amountDonated = inputText || buttonValue;
+
+  console.log("amountDonated", amountDonated);
+
+  let userAddress: Address = userData.address;
 
   return c.res({
     image: "/SuiteViewCryptoRidesMiamiBackground.png",
@@ -33,28 +54,27 @@ app.frame("/", (c) => {
       <Button value="ten">10</Button>,
       <Button value="twenty">20</Button>,
       <Button value="fifty">50</Button>,
-      status === "response" && <Button.Reset>Reset</Button.Reset>,
+      status === "response" && <Button.Reset>Cancel</Button.Reset>,
     ],
   });
 });
 
-app.frame("/mintTicket", async (c) => {
+app.transaction("/mintTicket", async (c) => {
   const { frameData, verified } = c;
   const userData = await getUserData(frameData?.fid!);
 
   let userAddress: Address = userData.address;
 
-  return c.res({
-    image: "/SuiteViewCryptoRidesMiamiBackground.png",
-    intents: [
-      <Button.Link href="https://www.suiteview.org/crypto-rides-modal">
-        Claim your Ride
-      </Button.Link>,
-    ],
+  return c.contract({
+    abi: CryptoRidesNFTAbi,
+    to: contractConfig.contractAddress,
+    functionName: "safeMint",
+    args: [userAddress, ipfsNftMetadataHash],
+    chainId: "eip155:8453",
   });
 });
 
-app.frame("/isWhitelisted", async (c) => {
+app.frame("/claim", async (c) => {
   const { frameData, verified } = c;
   const userData = await getUserData(frameData?.fid!);
 
@@ -88,6 +108,22 @@ app.frame("/isWhitelisted", async (c) => {
   }
 });
 
+app.frame("/share", async (c) => {
+  const { frameData, verified } = c;
+  const userData = await getUserData(frameData?.fid!);
+
+  let userAddress: Address = userData.address;
+
+  return c.res({
+    image: renderImage("Your Ride is Ready.", "/CRYPTO-RIDES.png"),
+    intents: [
+      <Button action="/share">GOTV</Button>,
+      <Button.Link href="https://www.suiteview.org/crypto-donation">
+        Donate Rides
+      </Button.Link>,
+    ],
+  });
+});
 function renderImage(content: string, image: string | undefined) {
   return (
     <div
@@ -149,23 +185,6 @@ function renderImage(content: string, image: string | undefined) {
     </div>
   );
 }
-
-app.frame("/share", async (c) => {
-  const { frameData, verified } = c;
-  const userData = await getUserData(frameData?.fid!);
-
-  let userAddress: Address = userData.address;
-
-  return c.res({
-    image: renderImage("Your Ride is Ready.", "/CRYPTO-RIDES.png"),
-    intents: [
-      <Button action="/share">GOTV</Button>,
-      <Button.Link href="https://www.suiteview.org/crypto-donation">
-        Donate Rides
-      </Button.Link>,
-    ],
-  });
-});
 
 const handleTransactionSubmitted = function (_txn: any) {};
 

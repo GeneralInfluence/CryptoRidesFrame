@@ -5,7 +5,7 @@ import { devtools } from 'frog/dev'
 // import { neynar } from 'frog/hubs'
 import { handle } from 'frog/next'
 import { serveStatic } from 'frog/serve-static'
-import { getUserData, isWhitelisted, sendMintTransaction, mintNFT } from "@/app/utils/client"
+import { getUserData, isWhitelisted } from "@/app/utils/client"
 import { Address } from "viem"
 
 const app = new Frog({
@@ -111,7 +111,7 @@ app.frame("/isWhitelisted", async (c) => {
   }
 })
 
-const handleTransactionSubmitted = function(txn) {
+const handleTransactionSubmitted = function(_txn: any) {
 
 }
 
@@ -122,7 +122,7 @@ app.frame("/mintTicket", async (c) => {
   let userAddress: Address = "0x3a01234190749D69ee2E87e50fA58925CB5Ce669"; // userData.address;
 
   // const txn = sendMintTransaction(userAddress,"QmSMqcgyu2Sy8Xo5e8FQjUXtTSyqPaZz2BsUesyQMya2FE")
-  const txn = await mintNFT(userAddress,"QmSMqcgyu2Sy8Xo5e8FQjUXtTSyqPaZz2BsUesyQMya2FE");
+  // const txn = await mintNFT(userAddress,"QmSMqcgyu2Sy8Xo5e8FQjUXtTSyqPaZz2BsUesyQMya2FE");
 
   return c.res({
     image: renderImage("Your Ride is Ready.","CRYPTO-RIDES.png"),

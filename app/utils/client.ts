@@ -6,13 +6,14 @@ import {
   parseEther,
 } from "viem";
 import { useWriteContract } from "wagmi";
-import { 
+import {
   type WriteContractErrorType,
-  type WriteContractReturnType } from '@wagmi/core'
+  type WriteContractReturnType,
+} from "@wagmi/core";
 // import { privateKeyToAccount } from "viem/accounts";
 import { base, baseSepolia } from "viem/chains";
 import { config } from "dotenv";
-import { cryptoRidesNFTAddress, contractConfig } from "@/app/utils/config";
+import { contractConfig } from "@/app/utils/config";
 import { CryptoRidesNFTAbi } from "@/abis/CryptoRidesNFT";
 
 config();
@@ -27,68 +28,58 @@ export const publicClient = createPublicClient({
   transport: http(),
 });
 
+// const { writeContract, onError, onSuccess } = useWriteContract();
 
-const { writeContract, onError, onSuccess } = useWriteContract();
+// export const mintNFT = async function (
+//   userAddress: Address,
+//   tokenURI: string,
+//   handleTransactionSuccess: (txHash: string) => Promise<string | undefined>,
+//   handleTransactionError: (txHash: string) => Promise<string | undefined>
+// ) {
+//   const tx = writeContract(
+//     {
+//       address: contractConfig.contractAddress,
+//       abi: contractConfig.contractAbi,
+//       functionName: "safeMint",
+//       args: [userAddress, tokenURI],
+//     },
+//     {
+//       onSuccess: handleTransactionSuccess
+//     },
+//     {
+//       onError: handleTransactionError
+//     }
+//   );
 
-export const mintNFT = async function (
-  userAddress: Address,
-  tokenURI: string,
-  handleTransactionSuccess: (txHash: string) => Promise<string | undefined>,
-  handleTransactionError: (txHash: string) => Promise<string | undefined>
-) {
-  const tx = writeContract(
-    {
-      address: contractConfig.contractAddress,
-      abi: contractConfig.contractAbi,
-      functionName: "safeMint",
-      args: [userAddress, tokenURI],
-    },
-    {
-      onSuccess: handleTransactionSuccess
-    },
-    {
-      onError: handleTransactionError
-    }
-  );
-
-  return tx;
-};
-
+//   return tx;
+// };
 
 // JSON-RPC Account
 export const [address] = await walletClient.getAddresses();
 
-export const sendMintTransaction = async (to: Address, uri: string) => {
-  const { request } = await publicClient.simulateContract({
-    account: address,
-    address: cryptoRidesNFTAddress,
-    abi: CryptoRidesNFTAbi,
-    functionName: "safeMint",
-    args: [to, uri],
-  });
+// export const sendMintTransaction = async (to: Address, uri: string) => {
+//   const { request } = await publicClient.simulateContract({
+//     account: address,
+//     address: contractConfig.contractAddress,
+//     abi: CryptoRidesNFTAbi,
+//     functionName: "safeMint",
+//     args: [to, uri],
+//   });
 
-  const txn = await walletClient.writeContract(request);
+//   const txn = await walletClient.writeContract(request);
 
-  return txn;
-};
+//   return txn;
+// };
 
 export const isWhitelisted = async (user: Address) => {
   const balance = await publicClient.readContract({
-    address: cryptoRidesNFTAddress,
-    abi: [
-      {
-        type: "function",
-        name: "isWhitelisted",
-        inputs: [{ name: "account", type: "address", internalType: "address" }],
-        outputs: [{ name: "", type: "bool", internalType: "bool" }],
-        stateMutability: "view",
-      },
-    ],
+    address: contractConfig.contractAddress,
+    abi: contractConfig.contractAbi,
     functionName: "isWhitelisted",
     args: [user],
   });
 
-  return BigInt(balance);
+  return balance;
 };
 
 export const getUserData = async (fid: number) => {

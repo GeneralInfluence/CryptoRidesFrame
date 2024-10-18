@@ -1,5 +1,5 @@
 {
-  "name": "cryptorides",
+  "name": "crframe",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,13 +10,11 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "dotenv": "^16.4.5",
     "frog": "latest",
     "hono": "^4",
-    "next": "14.1.0",
     "react": "^18",
     "react-dom": "^18",
-    "wagmi": "^2.12.19"
+    "next": "14.1.0"
   },
   "devDependencies": {
     "typescript": "^5",
@@ -24,5 +22,6 @@
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "vercel": "^32.4.1"
-  }
+  },
+  "packageManager": "yarn@1.22.21+sha1.1959a18351b811cdeedbd484a8f86c3cc3bbaf72"
 }

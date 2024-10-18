@@ -1,6 +1,6 @@
-import { CryptoRidesNFTAbi } from "@/abis/CryptoRidesNFT";
 import { Address } from "viem";
-import { ContractConfig } from "@/app/types";
+import { ContractConfig } from "../types";
+import { CryptoRidesNFTAbi } from "../abis/CryptoRidesNFT";
 
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
 export const PAYMASTER_URL =

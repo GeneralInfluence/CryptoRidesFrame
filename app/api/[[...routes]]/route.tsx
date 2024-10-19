@@ -14,15 +14,13 @@ import { Address } from "viem";
 const app = new Frog({
   assetsPath: "/",
   basePath: "/api",
-  // Supply a Hub to enable frame verification.
   hub: neynar({
     apiKey: process.env.NEXT_PUBLIC_NEYNAR_API_KEY as string,
   }),
-  title: "Frog Frame",
+  title: "Crypto Rides",
 });
 
-// Uncomment to use Edge Runtime
-// export const runtime = 'edge'
+// export const runtime = "edge";
 
 app.frame("/", (c) => {
   return c.res({
@@ -30,15 +28,13 @@ app.frame("/", (c) => {
     intents: [
       <Button action="/donate">Donate</Button>,
       <Button action="/claim">Claim</Button>,
-      // <Button.Transaction target="/mintTicket">Mint Ticket</Button.Transaction>,
     ],
   });
 });
 
 app.frame("/donate", async (c) => {
-  const { frameData, verified } = c;
+  const { frameData, verified, status, buttonValue, inputText } = c;
   const userData = await getUserData(frameData?.fid!);
-  const { buttonValue, inputText, status } = c;
   const amountDonated = inputText || buttonValue;
 
   console.log("amountDonated", amountDonated);
@@ -50,8 +46,7 @@ app.frame("/donate", async (c) => {
     intents: [
       <Button value="five">5</Button>,
       <Button value="ten">10</Button>,
-      <Button value="twenty">20</Button>,
-      <Button value="fifty">50</Button>,
+      <Button value="twenty">25</Button>,
       status === "response" && <Button.Reset>Cancel</Button.Reset>,
     ],
   });
@@ -73,7 +68,7 @@ app.transaction("/mintTicket", async (c) => {
 });
 
 app.frame("/claim", async (c) => {
-  const { frameData, verified } = c;
+  const { frameData, verified, status } = c;
   const userData = await getUserData(frameData?.fid!);
   const userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
   const whitelisted = await isWhitelisted(userAddress);
@@ -89,6 +84,7 @@ app.frame("/claim", async (c) => {
           Claim your Ride
         </Button.Link>,
         <Button.Reset>Cancel</Button.Reset>,
+        status === "response" && <Button.Reset>Cancel</Button.Reset>,
       ],
     });
   } else {
@@ -102,16 +98,17 @@ app.frame("/claim", async (c) => {
         <Button.Transaction target="/mintTicket">
           Mint your Ticket
         </Button.Transaction>,
+        status === "response" && <Button.Reset>Cancel</Button.Reset>,
       ],
     });
   }
 });
 
 app.frame("/share", async (c) => {
-  const { frameData, verified } = c;
+  const { frameData, verified, status } = c;
   const userData = await getUserData(frameData?.fid!);
 
-  let userAddress: Address =  "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
+  let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
 
   return c.res({
     image: renderImage("Your Ride is Ready.", "/CRYPTO-RIDES.png"),
@@ -120,6 +117,7 @@ app.frame("/share", async (c) => {
       <Button.Link href="https://www.suiteview.org/crypto-donation">
         Donate Rides
       </Button.Link>,
+      status === "response" && <Button.Reset>Cancel</Button.Reset>,
     ],
   });
 });

@@ -17,19 +17,31 @@ export const walletClient = createWalletClient({
 });
 
 export const publicClient = createPublicClient({
-  chain: baseSepolia,
-  transport: http(),
+  chain: base,
+  transport: http(process.env.NEXT_PUBLIC_RPC_URL as string),
 });
 
-export const isWhitelisted = async (user: Address) => {
-  const balance = await publicClient.readContract({
-    address: contractConfig.contractAddress,
-    abi: contractConfig.contractAbi,
-    functionName: "isWhitelisted",
-    args: [user],
-  });
+export const isWhitelisted = async (address: string) => {
+  if (!address) {
+    console.error("Address is undefined or empty");
 
-  return balance;
+    return false;
+  }
+
+  try {
+    const result = await publicClient.readContract({
+      address: contractConfig.contractAddress,
+      abi: contractConfig.contractAbi,
+      functionName: "isWhitelisted",
+      args: [address],
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Error checking whitelist status:", error);
+
+    return false;
+  }
 };
 
 export const getUserData = async (fid: number) => {

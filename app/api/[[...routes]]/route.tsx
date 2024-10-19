@@ -29,10 +29,8 @@ app.frame("/", (c) => {
     image: "/SuiteViewCryptoRidesMiamiBackground.png",
     intents: [
       <Button action="/donate">Donate</Button>,
-      <Button.Transaction target="/mintTicket">Mint Ticket</Button.Transaction>,
-      // <Button value="five">5</Button>,
-      // <Button value="ten">10</Button>,
-      // <Button value="twenty">20</Button>,
+      <Button action="/claim">Claim</Button>,
+      // <Button.Transaction target="/mintTicket">Mint Ticket</Button.Transaction>,
     ],
   });
 });
@@ -45,7 +43,7 @@ app.frame("/donate", async (c) => {
 
   console.log("amountDonated", amountDonated);
 
-  let userAddress: Address = userData.address;
+  const userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
 
   return c.res({
     image: "/SuiteViewCryptoRidesMiamiBackground.png",
@@ -63,7 +61,7 @@ app.transaction("/mintTicket", async (c) => {
   const { frameData, verified } = c;
   const userData = await getUserData(frameData?.fid!);
 
-  let userAddress: Address = userData.address;
+  let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
 
   return c.contract({
     abi: CryptoRidesNFTAbi,
@@ -77,9 +75,7 @@ app.transaction("/mintTicket", async (c) => {
 app.frame("/claim", async (c) => {
   const { frameData, verified } = c;
   const userData = await getUserData(frameData?.fid!);
-
-  let userAddress: Address = "0x3a01234190749D69ee2E87e50fA58925CB5Ce669"; // userData.address;
-
+  const userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
   const whitelisted = await isWhitelisted(userAddress);
 
   if (!whitelisted) {
@@ -92,6 +88,7 @@ app.frame("/claim", async (c) => {
         <Button.Link href="https://www.suiteview.org/crypto-rides-modal">
           Claim your Ride
         </Button.Link>,
+        <Button.Reset>Cancel</Button.Reset>,
       ],
     });
   } else {
@@ -102,7 +99,9 @@ app.frame("/claim", async (c) => {
         // <Button.Link href="https://claims.suiteview.org">
         //   Mint your Ticket
         // </Button.Link>
-        <Button action="/mintTicket">Mint your Ticket</Button>,
+        <Button.Transaction target="/mintTicket">
+          Mint your Ticket
+        </Button.Transaction>,
       ],
     });
   }
@@ -112,7 +111,7 @@ app.frame("/share", async (c) => {
   const { frameData, verified } = c;
   const userData = await getUserData(frameData?.fid!);
 
-  let userAddress: Address = userData.address;
+  let userAddress: Address =  "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
 
   return c.res({
     image: renderImage("Your Ride is Ready.", "/CRYPTO-RIDES.png"),
@@ -124,6 +123,7 @@ app.frame("/share", async (c) => {
     ],
   });
 });
+
 function renderImage(content: string, image: string | undefined) {
   return (
     <div
@@ -185,8 +185,6 @@ function renderImage(content: string, image: string | undefined) {
     </div>
   );
 }
-
-const handleTransactionSubmitted = function (_txn: any) {};
 
 devtools(app, { serveStatic });
 

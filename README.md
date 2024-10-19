@@ -1,6 +1,3 @@
-# CryptoRidesFrame
-For interacting with Crypto Rides directly from Farcaster.
-
 ```
 npm install
 npm run dev

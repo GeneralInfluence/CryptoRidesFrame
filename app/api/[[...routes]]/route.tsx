@@ -1,180 +1,126 @@
 /** @jsxImportSource frog/jsx */
 
-import { Button, Frog, TextInput } from 'frog'
-import { devtools } from 'frog/dev'
+import { CryptoRidesNFTAbi } from "@/app/abis/CryptoRidesNFT";
+import { getUserData, isWhitelisted } from "@/app/utils/client";
+import { contractConfig, ipfsNftMetadataHash } from "@/app/utils/config";
+import { Button, Frog, TextInput } from "frog";
+import { devtools } from "frog/dev";
+import { neynar } from "frog/hubs";
 // import { neynar } from 'frog/hubs'
-import { handle } from 'frog/next'
-import { serveStatic } from 'frog/serve-static'
-import { getUserData, isWhitelisted, sendMintTransaction, mintNFT } from "@/app/utils/client"
-import { Address } from "viem"
+import { handle } from "frog/next";
+import { serveStatic } from "frog/serve-static";
+import { Address } from "viem";
 
 const app = new Frog({
-  assetsPath: '/',
-  basePath: '/api',
-  // Supply a Hub to enable frame verification.
-  // hub: neynar({ apiKey: 'NEYNAR_FROG_FM' })
-  title: 'Crypto Rides',
-})
+  assetsPath: "/",
+  basePath: "/api",
+  hub: neynar({
+    apiKey: process.env.NEXT_PUBLIC_NEYNAR_API_KEY as string,
+  }),
+  title: "Crypto Rides",
+});
 
-// Uncomment to use Edge Runtime
-// export const runtime = 'edge'
+// export const runtime = "edge";
 
-app.frame('/', (c) => {
-  const { buttonValue, inputText, status } = c
-  const fruit = inputText || buttonValue
+app.frame("/", (c) => {
   return c.res({
     image: "/SuiteViewCryptoRidesMiamiBackground.png",
-    // image: (
-    //   <div
-    //     style={{
-    //       alignItems: 'center',
-    //       // backgroundImage: `url("/SV-BG.png")`,
-    //       background:
-    //         status === 'response'
-    //           ? 'linear-gradient(to right, #432889, #17101F)'
-    //           : 'black',
-    //       backgroundSize: '100% 100%',
-    //       display: 'flex',
-    //       flexDirection: 'column',
-    //       flexWrap: 'nowrap',
-    //       height: '100%',
-    //       justifyContent: 'center',
-    //       textAlign: 'center',
-    //       width: '100%',
-    //     }}
-    //   >
-    //     <div
-    //       style={{
-    //         color: 'white',
-    //         fontSize: 60,
-    //         fontStyle: 'normal',
-    //         letterSpacing: '-0.025em',
-    //         lineHeight: 1.4,
-    //         marginTop: 30,
-    //         padding: '0 120px',
-    //         whiteSpace: 'pre-wrap',
-    //       }}
-    //     >
-    //       {status === 'response'
-    //         ? `Nice choice.${fruit ? ` ${fruit.toUpperCase()}!!` : ''}`
-    //         : 'Welcome!'}
-    //     </div>
-    //   </div>
-    // ),
     intents: [
-      // <TextInput placeholder="Welcome to Crypto Rides." />,
-      <Button action="/isWhitelisted">Am I Eligible?</Button>,
-      <Button.Link href="https://www.suiteview.org/crypto-rides-modal">
-        Claim Ride
-      </Button.Link>,
-      <Button.Link href="https://www.suiteview.org/crypto-donation">
-        Donate Rides
-      </Button.Link>,
-      // status === 'response' && <Button.Reset>Reset</Button.Reset>,
+      <Button action="/donate">Donate</Button>,
+      <Button action="/claim">Claim</Button>,
     ],
-  })
-})
+  });
+});
 
-app.frame("/isWhitelisted", async (c) => {
+app.frame("/donate", async (c) => {
+  const { frameData, verified, status, buttonValue, inputText } = c;
+  const userData = await getUserData(frameData?.fid!);
+  const amountDonated = inputText || buttonValue;
+
+  console.log("amountDonated", amountDonated);
+
+  const userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
+
+  return c.res({
+    image: "/SuiteViewCryptoRidesMiamiBackground.png",
+    intents: [
+      <Button value="five">5</Button>,
+      <Button value="ten">10</Button>,
+      <Button value="twenty">25</Button>,
+      status === "response" && <Button.Reset>Cancel</Button.Reset>,
+    ],
+  });
+});
+
+app.transaction("/mintTicket", async (c) => {
   const { frameData, verified } = c;
   const userData = await getUserData(frameData?.fid!);
 
-  let userAddress: Address = "0x3a01234190749D69ee2E87e50fA58925CB5Ce669"; // userData.address;
+  let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
 
+  return c.contract({
+    abi: CryptoRidesNFTAbi,
+    to: contractConfig.contractAddress,
+    functionName: "safeMint",
+    args: [userAddress, ipfsNftMetadataHash],
+    chainId: "eip155:8453",
+  });
+});
+
+app.frame("/claim", async (c) => {
+  const { frameData, verified, status } = c;
+  const userData = await getUserData(frameData?.fid!);
+  const userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
   const whitelisted = await isWhitelisted(userAddress);
 
   if (!whitelisted) {
     return c.res({
       image: renderImage(
         "Please claim a ride before minting your ticket.",
-        `/SuiteViewCryptoRidesMiamiBackground.png`,
+        `/SuiteViewCryptoRidesMiamiBackground.png`
       ),
       intents: [
         <Button.Link href="https://www.suiteview.org/crypto-rides-modal">
           Claim your Ride
-        </Button.Link>
-      ]
-    })
+        </Button.Link>,
+        <Button.Reset>Cancel</Button.Reset>,
+        status === "response" && <Button.Reset>Cancel</Button.Reset>,
+      ],
+    });
   } else {
     return c.res({
-      image: renderImage("","/TarkinClaim.jpg"),
-      intents: [ // TODO: mint natively, then redirect to share.
+      image: renderImage("", "/TarkinClaim.jpg"),
+      intents: [
+        // TODO: mint natively, then redirect to share.
         // <Button.Link href="https://claims.suiteview.org">
         //   Mint your Ticket
         // </Button.Link>
-        <Button action="/mintTicket">
+        <Button.Transaction target="/mintTicket">
           Mint your Ticket
-        </Button>
-        
-      ]
-    })
+        </Button.Transaction>,
+        status === "response" && <Button.Reset>Cancel</Button.Reset>,
+      ],
+    });
   }
-})
-
-const handleTransactionSubmitted = function(txn) {
-
-}
-
-app.frame("/mintTicket", async (c) => {
-  const { frameData, verified } = c;
-  const userData = await getUserData(frameData?.fid!);
-
-  let userAddress: Address = "0x3a01234190749D69ee2E87e50fA58925CB5Ce669"; // userData.address;
-
-  // const txn = sendMintTransaction(userAddress,"QmSMqcgyu2Sy8Xo5e8FQjUXtTSyqPaZz2BsUesyQMya2FE")
-  const txn = await mintNFT(userAddress,"QmSMqcgyu2Sy8Xo5e8FQjUXtTSyqPaZz2BsUesyQMya2FE");
-
-  return c.res({
-    image: renderImage("Your Ride is Ready.","CRYPTO-RIDES.png"),
-    intents: [
-      <Button action="/share">
-        GOTV
-      </Button>,
-      <Button.Link href="https://www.suiteview.org/crypto-donation">
-        Donate Rides
-      </Button.Link>
-    ]
-  })
-})
+});
 
 app.frame("/share", async (c) => {
-  const { frameData, verified } = c;
+  const { frameData, verified, status } = c;
   const userData = await getUserData(frameData?.fid!);
 
-  let userAddress: Address = "0x3a01234190749D69ee2E87e50fA58925CB5Ce669"; // userData.address;
+  let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
 
   return c.res({
-    image: renderImage("Your Ride is Ready.","CRYPTO-RIDES.png"),
+    image: renderImage("Your Ride is Ready.", "/CRYPTO-RIDES.png"),
     intents: [
-      <Button action="/share">
-        GOTV
-      </Button>,
+      <Button action="/share">GOTV</Button>,
       <Button.Link href="https://www.suiteview.org/crypto-donation">
         Donate Rides
-      </Button.Link>
-    ]
-  })
-})
-
-devtools(app, { serveStatic })
-
-export const GET = handle(app)
-export const POST = handle(app)
-
-// NOTE: That if you are using the devtools and enable Edge Runtime, you will need to copy the devtools
-// static assets to the public folder. You can do this by adding a script to your package.json:
-// ```json
-// {
-//   scripts: {
-//     "copy-static": "cp -r ./node_modules/frog/_lib/ui/.frog ./public/.frog"
-//   }
-// }
-// ```
-// Next, you'll want to set up the devtools to use the correct assets path:
-// ```ts
-// devtools(app, { assetsPath: '/.frog' })
-// ```
-
+      </Button.Link>,
+      status === "response" && <Button.Reset>Cancel</Button.Reset>,
+    ],
+  });
+});
 
 function renderImage(content: string, image: string | undefined) {
   return (
@@ -203,12 +149,17 @@ function renderImage(content: string, image: string | undefined) {
         }}
       >
         {image && (
-          <img src={image} alt="Pharo Landing" height={620} width={1200} />
+          <img
+            src={image}
+            alt="SuiteView Crypto Rides"
+            height={620}
+            width={1200}
+          />
         )}
       </div>
       {content == "" ? (
         <></>
-      ):(
+      ) : (
         <div
           style={{
             color: "white",
@@ -232,3 +183,22 @@ function renderImage(content: string, image: string | undefined) {
     </div>
   );
 }
+
+devtools(app, { serveStatic });
+
+export const GET = handle(app);
+export const POST = handle(app);
+
+// NOTE: That if you are using the devtools and enable Edge Runtime, you will need to copy the devtools
+// static assets to the public folder. You can do this by adding a script to your package.json:
+// ```json
+// {
+//   scripts: {
+//     "copy-static": "cp -r ./node_modules/frog/_lib/ui/.frog ./public/.frog"
+//   }
+// }
+// ```
+// Next, you'll want to set up the devtools to use the correct assets path:
+// ```ts
+// devtools(app, { assetsPath: '/.frog' })
+// ```

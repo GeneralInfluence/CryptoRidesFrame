@@ -6,7 +6,6 @@ import { contractConfig, ipfsNftMetadataHash } from "@/app/utils/config";
 import { Button, Frog, TextInput } from "frog";
 import { devtools } from "frog/dev";
 import { neynar } from "frog/hubs";
-// import { neynar } from 'frog/hubs'
 import { handle } from "frog/next";
 import { serveStatic } from "frog/serve-static";
 import { Address } from "viem";
@@ -15,7 +14,7 @@ const app = new Frog({
   assetsPath: "/",
   basePath: "/api",
   hub: neynar({
-    apiKey: process.env.NEXT_PUBLIC_NEYNAR_API_KEY as string,
+    apiKey: process.env.NEYNAR_API_KEY as string,
   }),
   title: "Crypto Rides",
 });
@@ -33,13 +32,14 @@ app.frame("/", (c) => {
 });
 
 app.frame("/donate", async (c) => {
-  const { frameData, verified, status, buttonValue, inputText } = c;
+  const { status, buttonValue, inputText, frameData } = c;
+
   const userData = await getUserData(frameData?.fid!);
+  const userAddress: Address = userData?.custody_address; // "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
+  console.log("userAddress", userAddress);
+
   const amountDonated = inputText || buttonValue;
-
   console.log("amountDonated", amountDonated);
-
-  const userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
 
   return c.res({
     image: "/SuiteViewCryptoRidesMiamiBackground.png",
@@ -53,25 +53,38 @@ app.frame("/donate", async (c) => {
 });
 
 app.transaction("/mintTicket", async (c) => {
-  const { frameData, verified } = c;
-  const userData = await getUserData(frameData?.fid!);
-
-  let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
+  const { frameData, verified, address } = c;
+  
+  // const userData = await getUserData(frameData?.fid!);
+  // let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
 
   return c.contract({
     abi: CryptoRidesNFTAbi,
     to: contractConfig.contractAddress,
     functionName: "safeMint",
-    args: [userAddress, ipfsNftMetadataHash],
+    args: [address as `0x${string}`, ipfsNftMetadataHash],
     chainId: "eip155:8453",
   });
 });
 
 app.frame("/claim", async (c) => {
   const { frameData, verified, status } = c;
-  const userData = await getUserData(frameData?.fid!);
-  const userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
-  const whitelisted = await isWhitelisted(userAddress);
+  let whitelisted: boolean = false;
+  let userAddress: Address;
+  let userData;
+
+  if (frameData) {
+    console.log("FID: ",frameData.fid);
+
+    userData = await getUserData(frameData.fid);
+    userAddress = getAddressFromUserData(userData);
+    console.log("userAddress", userAddress);
+
+    whitelisted = await isWhitelisted( userData.custody_address );
+  } 
+  else {
+    console.error("Bad Frame Data.")
+  }
 
   if (!whitelisted) {
     return c.res({
@@ -84,7 +97,7 @@ app.frame("/claim", async (c) => {
           Claim your Ride
         </Button.Link>,
         <Button.Reset>Cancel</Button.Reset>,
-        status === "response" && <Button.Reset>Cancel</Button.Reset>,
+        // status === "response" && <Button.Reset>Cancel</Button.Reset>,
       ],
     });
   } else {
@@ -121,6 +134,10 @@ app.frame("/share", async (c) => {
     ],
   });
 });
+
+function getAddressFromUserData(userData: any) {
+  return userData.users[0].verified_addresses.eth_addresses[0]
+}
 
 function renderImage(content: string, image: string | undefined) {
   return (

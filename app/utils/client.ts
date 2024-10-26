@@ -36,7 +36,7 @@ export const isWhitelisted = async (address: string) => {
       args: [address],
     });
 
-    return result;
+    return result as boolean;
   } catch (error) {
     console.error("Error checking whitelist status:", error);
 

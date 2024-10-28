@@ -35,8 +35,7 @@ app.frame("/donate", async (c) => {
   const { status, buttonValue, inputText, frameData } = c;
 
   const userData = await getUserData(frameData?.fid!);
-  const userAddress: Address = userData?.custody_address; // "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
-  console.log("userAddress", userAddress);
+  const userAddress = getAddressFromUserData(userData);
 
   const amountDonated = inputText || buttonValue;
   console.log("amountDonated", amountDonated);
@@ -44,7 +43,7 @@ app.frame("/donate", async (c) => {
   return c.res({
     image: "/SuiteViewCryptoRidesMiamiBackground.png",
     intents: [
-      <Button value="five">5</Button>,
+      <Button.Transaction target="/senDonation">5</Button.Transaction>,
       <Button value="ten">10</Button>,
       <Button value="twenty">25</Button>,
       status === "response" && <Button.Reset>Cancel</Button.Reset>,
@@ -55,9 +54,6 @@ app.frame("/donate", async (c) => {
 app.transaction("/mintTicket", async (c) => {
   const { frameData, verified, address } = c;
   
-  // const userData = await getUserData(frameData?.fid!);
-  // let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
-
   return c.contract({
     abi: CryptoRidesNFTAbi,
     to: contractConfig.contractAddress,
@@ -78,9 +74,8 @@ app.frame("/claim", async (c) => {
 
     userData = await getUserData(frameData.fid);
     userAddress = getAddressFromUserData(userData);
-    console.log("userAddress", userAddress);
 
-    whitelisted = await isWhitelisted( userData.custody_address );
+    whitelisted = await isWhitelisted( userAddress );
   } 
   else {
     console.error("Bad Frame Data.")
@@ -136,7 +131,9 @@ app.frame("/share", async (c) => {
 });
 
 function getAddressFromUserData(userData: any) {
-  return userData.users[0].verified_addresses.eth_addresses[0]
+  const addresses = userData.users[0].verified_addresses.eth_addresses;
+  console.log("All user addresses: ",addresses);
+  return addresses[0]
 }
 
 function renderImage(content: string, image: string | undefined) {

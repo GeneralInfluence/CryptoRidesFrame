@@ -14,7 +14,7 @@ const app = new Frog({
   assetsPath: "/",
   basePath: "/api",
   hub: neynar({
-    apiKey: process.env.NEYNAR_API_KEY as string,
+    apiKey: process.env.NEXT_PUBLIC_NEYNAR_API_KEY as string,
   }),
   title: "Crypto Rides",
 });
@@ -80,7 +80,7 @@ app.frame("/claim", async (c) => {
     console.log("FID: ", frameData.fid);
 
     userData = await getUserData(frameData.fid);
-    userAddress = getAddressFromUserData(userData);
+    userAddress = await getAddressFromUserData(userData);
     console.log("userAddress from userData for claim route", userData);
 
     whitelisted = await isWhitelisted(userAddress);

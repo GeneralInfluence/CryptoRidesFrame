@@ -22,11 +22,14 @@ const app = new Frog({
 // export const runtime = "edge";
 
 app.frame("/", (c) => {
+  const { status } = c;
+
   return c.res({
     image: "/SuiteViewCryptoRidesMiamiBackground.png",
     intents: [
       <Button action="/donate">Donate</Button>,
       <Button action="/claim">Claim</Button>,
+      <Button action="/share">Share</Button>,
     ],
   });
 });
@@ -35,7 +38,7 @@ app.frame("/donate", async (c) => {
   const { status, buttonValue, inputText, frameData } = c;
 
   const userData = await getUserData(frameData?.fid!);
-  const userAddress: Address = userData?.custody_address; // "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
+  const userAddress: Address = getAddressFromUserData(userData); // "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
   console.log("userAddress", userAddress);
 
   const amountDonated = inputText || buttonValue;
@@ -54,15 +57,15 @@ app.frame("/donate", async (c) => {
 
 app.transaction("/mintTicket", async (c) => {
   const { frameData, verified, address } = c;
-  
-  // const userData = await getUserData(frameData?.fid!);
-  // let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
+
+  const userData = await getUserData(frameData?.fid!);
+  let userAddress: Address = getAddressFromUserData(userData);
 
   return c.contract({
     abi: CryptoRidesNFTAbi,
     to: contractConfig.contractAddress,
     functionName: "safeMint",
-    args: [address as `0x${string}`, ipfsNftMetadataHash],
+    args: [userAddress, ipfsNftMetadataHash],
     chainId: "eip155:8453",
   });
 });
@@ -74,16 +77,15 @@ app.frame("/claim", async (c) => {
   let userData;
 
   if (frameData) {
-    console.log("FID: ",frameData.fid);
+    console.log("FID: ", frameData.fid);
 
     userData = await getUserData(frameData.fid);
     userAddress = getAddressFromUserData(userData);
-    console.log("userAddress", userAddress);
+    console.log("userAddress from userData for claim route", userData);
 
-    whitelisted = await isWhitelisted( userData.custody_address );
-  } 
-  else {
-    console.error("Bad Frame Data.")
+    whitelisted = await isWhitelisted(userAddress);
+  } else {
+    console.error("Bad Frame Data.");
   }
 
   if (!whitelisted) {
@@ -97,7 +99,7 @@ app.frame("/claim", async (c) => {
           Claim your Ride
         </Button.Link>,
         <Button.Reset>Cancel</Button.Reset>,
-        // status === "response" && <Button.Reset>Cancel</Button.Reset>,
+        status === "response" && <Button.Reset>Cancel</Button.Reset>,
       ],
     });
   } else {
@@ -135,9 +137,26 @@ app.frame("/share", async (c) => {
   });
 });
 
-function getAddressFromUserData(userData: any) {
-  return userData.users[0].verified_addresses.eth_addresses[0]
-}
+const getAddressFromUserData = async (userData: any) => {
+  try {
+    // Add null checks and provide default values
+    if (!userData || !userData.addresses || !Array.isArray(userData.addresses)) {
+      console.log("No valid user data or addresses found");
+      return null;
+    }
+
+    // Make sure there's at least one address before accessing index 0
+    if (userData.addresses.length === 0) {
+      console.log("User has no addresses");
+      return null;
+    }
+
+    return userData.addresses[0];
+  } catch (error) {
+    console.error("Error getting address from user data:", error);
+    return null;
+  }
+};
 
 function renderImage(content: string, image: string | undefined) {
   return (
@@ -205,17 +224,3 @@ devtools(app, { serveStatic });
 
 export const GET = handle(app);
 export const POST = handle(app);
-
-// NOTE: That if you are using the devtools and enable Edge Runtime, you will need to copy the devtools
-// static assets to the public folder. You can do this by adding a script to your package.json:
-// ```json
-// {
-//   scripts: {
-//     "copy-static": "cp -r ./node_modules/frog/_lib/ui/.frog ./public/.frog"
-//   }
-// }
-// ```
-// Next, you'll want to set up the devtools to use the correct assets path:
-// ```ts
-// devtools(app, { assetsPath: '/.frog' })
-// ```

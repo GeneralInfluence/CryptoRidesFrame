@@ -1,25 +1,27 @@
 /** @jsxImportSource frog/jsx */
 
 import { CryptoRidesNFTAbi } from "@/app/abis/CryptoRidesNFT";
-import { getUserData, isWhitelisted } from "@/app/utils/client";
+import { useNeynar } from "@/app/hooks/useNeynar";
 import { contractConfig, ipfsNftMetadataHash } from "@/app/utils/config";
-import { Button, Frog, TextInput } from "frog";
+import { isWhitelisted } from "@/app/utils/nftContract";
+import { Button, Frog } from "frog";
 import { devtools } from "frog/dev";
-import { neynar } from "frog/hubs";
 import { handle } from "frog/next";
 import { serveStatic } from "frog/serve-static";
 import { Address } from "viem";
 
+const { neynar, getUserData } = useNeynar();
+
 const app = new Frog({
+  hub: neynar.hub(),
   assetsPath: "/",
   basePath: "/api",
-  hub: neynar({
-    apiKey: "0A472459-4C22-46E6-B5DC-847F797322B1",
-  }),
   title: "Crypto Rides",
-});
-
-// export const runtime = "edge";
+}).use(
+  neynar.middleware({
+    features: ["interactor", "cast"],
+  })
+);
 
 app.frame("/", (c) => {
   return c.res({
@@ -79,7 +81,7 @@ app.frame("/claim", async (c) => {
 
     userData = await getUserData(frameData.fid);
     userAddress = await getAddressFromUserData(userData);
-    console.log("userAddress from userData for claim route", userData);
+    console.log("userAddress from userData for claim route", userAddress);
 
     whitelisted = await isWhitelisted(userAddress);
   } else {
@@ -138,18 +140,22 @@ const getAddressFromUserData = async (userData: any) => {
   try {
     console.log("userData", userData);
     // Add null checks and provide default values
-    if (!userData || !userData.addresses || !Array.isArray(userData.addresses)) {
+    if (
+      !userData ||
+      !userData.verified_addresses ||
+      !Array.isArray(userData.verified_addresses)
+    ) {
       console.log("No valid user data or addresses found");
       return null;
     }
 
     // Make sure there's at least one address before accessing index 0
-    if (userData.addresses.length === 0) {
+    if (userData.verified_addresses.length === 0) {
       console.log("User has no addresses");
       return null;
     }
 
-    return userData.addresses[0];
+    return userData.verified_addresses[0];
   } catch (error) {
     console.error("Error getting address from user data:", error);
     return null;

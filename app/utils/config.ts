@@ -9,7 +9,7 @@ export const PAYMASTER_URL =
 export const contractConfig: ContractConfig = {
   alchemyApiKey: process.env.ALCHEMY_API_KEY!,
   // Base Mainnet contract address
-  contractAddress: "0xdC06c3643694C53bD364c2A25713e2AC138538e4" as Address,
+  contractAddress: "0xD44f7B0ef9159959fcC105f45Ed7266C2181F925" as Address,
   contractAbi: CryptoRidesNFTAbi,
 };
 

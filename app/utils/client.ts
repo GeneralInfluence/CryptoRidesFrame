@@ -49,7 +49,7 @@ export const getUserData = async (fid: number) => {
     method: "GET",
     headers: {
       accept: "application/json",
-      api_key: process.env.NEYNAR_API_KEY as string,
+      api_key: process.env.NEXT_PUBLIC_NEYNAR_API_KEY as string,
     },
   };
 

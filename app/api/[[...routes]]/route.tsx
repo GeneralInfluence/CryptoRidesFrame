@@ -14,7 +14,7 @@ const app = new Frog({
   assetsPath: "/",
   basePath: "/api",
   hub: neynar({
-    apiKey: process.env.NEXT_PUBLIC_NEYNAR_API_KEY as string,
+    apiKey: "0A472459-4C22-46E6-B5DC-847F797322B1",
   }),
   title: "Crypto Rides",
 });
@@ -22,8 +22,6 @@ const app = new Frog({
 // export const runtime = "edge";
 
 app.frame("/", (c) => {
-  const { status } = c;
-
   return c.res({
     image: "/SuiteViewCryptoRidesMiamiBackground.png",
     intents: [
@@ -38,7 +36,7 @@ app.frame("/donate", async (c) => {
   const { status, buttonValue, inputText, frameData } = c;
 
   const userData = await getUserData(frameData?.fid!);
-  const userAddress: Address = getAddressFromUserData(userData); // "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
+  const userAddress: Address = await getAddressFromUserData(userData); // "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
   console.log("userAddress", userAddress);
 
   const amountDonated = inputText || buttonValue;
@@ -59,7 +57,7 @@ app.transaction("/mintTicket", async (c) => {
   const { frameData, verified, address } = c;
 
   const userData = await getUserData(frameData?.fid!);
-  let userAddress: Address = getAddressFromUserData(userData);
+  const userAddress: Address = await getAddressFromUserData(userData);
 
   return c.contract({
     abi: CryptoRidesNFTAbi,
@@ -99,7 +97,6 @@ app.frame("/claim", async (c) => {
           Claim your Ride
         </Button.Link>,
         <Button.Reset>Cancel</Button.Reset>,
-        status === "response" && <Button.Reset>Cancel</Button.Reset>,
       ],
     });
   } else {
@@ -139,6 +136,7 @@ app.frame("/share", async (c) => {
 
 const getAddressFromUserData = async (userData: any) => {
   try {
+    console.log("userData", userData);
     // Add null checks and provide default values
     if (!userData || !userData.addresses || !Array.isArray(userData.addresses)) {
       console.log("No valid user data or addresses found");

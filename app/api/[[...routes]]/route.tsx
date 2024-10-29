@@ -17,6 +17,7 @@ const app = new Frog({
   assetsPath: "/",
   basePath: "/api",
   title: "Crypto Rides",
+  verify: "silent",
 }).use(
   neynar.middleware({
     features: ["interactor", "cast"],
@@ -72,14 +73,27 @@ app.transaction("/mintTicket", async (c) => {
 
 app.frame("/claim", async (c) => {
   const { frameData, verified, status } = c;
+  const { fid, castId } = frameData;
   let whitelisted: boolean = false;
   let userAddress: Address;
   let userData;
 
-  if (frameData) {
-    console.log("FID: ", frameData.fid);
+  if (!verified) {
+    return c.res({
+      image: renderImage(
+        "Not Verified frame message.",
+        "/SuiteViewCryptoRidesMiamiBackground.png"
+      ),
+      intents: [<Button.Reset>Reset</Button.Reset>],
+    });
+  }
 
-    userData = await getUserData(frameData.fid);
+  console.log("frameData", frameData, verified, fid, castId);
+
+  if (frameData) {
+    console.log("FID: ", fid);
+
+    userData = await getUserData(fid);
     userAddress = await getAddressFromUserData(userData);
     console.log("userAddress from userData for claim route", userAddress);
 
@@ -87,6 +101,10 @@ app.frame("/claim", async (c) => {
   } else {
     console.error("Bad Frame Data.");
   }
+
+  console.log("whitelisted", whitelisted);
+  const warpcastWallet = userData?.verified_addresses?.[0];
+  console.log("warpcastWallet", warpcastWallet);
 
   if (!whitelisted) {
     return c.res({

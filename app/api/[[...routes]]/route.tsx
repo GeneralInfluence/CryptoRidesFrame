@@ -2,7 +2,9 @@
 
 import { CryptoRidesNFTAbi } from "@/app/abis/CryptoRidesNFT";
 import { useNeynar } from "@/app/hooks/useNeynar";
+import { State } from "@/app/types";
 import { contractConfig, ipfsNftMetadataHash } from "@/app/utils/config";
+import { getAddressFromUserData } from "@/app/utils/helpers";
 import { isWhitelisted } from "@/app/utils/nftContract";
 import { Button, Frog } from "frog";
 import { devtools } from "frog/dev";
@@ -12,7 +14,10 @@ import { Address } from "viem";
 
 const { neynar, getUserData } = useNeynar();
 
-const app = new Frog({
+const app = new Frog<{ State: State }>({
+  initialState: {
+    whitelisted: false,
+  },
   hub: neynar.hub(),
   assetsPath: "/",
   basePath: "/api",
@@ -31,6 +36,7 @@ app.frame("/", (c) => {
       <Button action="/donate">Donate</Button>,
       <Button action="/claim">Claim</Button>,
       <Button action="/share">Share</Button>,
+      // <Button.AddCastAction action="/log-this">Add</Button.AddCastAction>,
     ],
   });
 });
@@ -39,7 +45,9 @@ app.frame("/donate", async (c) => {
   const { status, buttonValue, inputText, frameData } = c;
 
   const userData = await getUserData(frameData?.fid!);
-  const userAddress: Address = await getAddressFromUserData(userData); // "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
+  const userAddress = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
+  // const userAddress: Address = await getAddressFromUserData(userData);
+  // "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
   console.log("userAddress", userAddress);
 
   const amountDonated = inputText || buttonValue;
@@ -48,7 +56,7 @@ app.frame("/donate", async (c) => {
   return c.res({
     image: "/SuiteViewCryptoRidesMiamiBackground.png",
     intents: [
-      <Button.Transaction target="/senDonation">5</Button.Transaction>,
+      <Button.Transaction target="/sendDonation">5</Button.Transaction>,
       <Button value="ten">10</Button>,
       <Button value="twenty">25</Button>,
       status === "response" && <Button.Reset>Cancel</Button.Reset>,
@@ -56,8 +64,12 @@ app.frame("/donate", async (c) => {
   });
 });
 
-app.transaction("/mintTicket", async (c) => {
+app.transaction("/mint", async (c) => {
   const { frameData, verified, address } = c;
+
+  if (!verified) {
+    return c.error(new Error("something went wrong..."));
+  }
 
   const userData = await getUserData(frameData?.fid!);
   const userAddress: Address = await getAddressFromUserData(userData);
@@ -71,11 +83,24 @@ app.transaction("/mintTicket", async (c) => {
   });
 });
 
+// app.castAction(
+//   "/log-this",
+//   (c) => {
+//     console.log(
+//       `Cast Action to ${JSON.stringify(c.actionData.castId)} from ${
+//         c.actionData.fid
+//       }`
+//     );
+//     return c.message({ message: "Action Succeeded" });
+//   },
+//   { name: "Log This!", icon: "log" }
+// );
+
 app.frame("/claim", async (c) => {
-  const { frameData, verified, status } = c;
+  const { frameData, verified, status, deriveState } = c;
   const { fid, castId } = frameData;
-  let whitelisted: boolean = false;
-  let userAddress: Address;
+  const whitelisted: boolean = false;
+  const userAddress = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
   let userData;
 
   if (!verified) {
@@ -87,26 +112,23 @@ app.frame("/claim", async (c) => {
       intents: [<Button.Reset>Reset</Button.Reset>],
     });
   }
-
-  console.log("frameData", frameData, verified, fid, castId);
+  const state = await deriveState(async (prevState) => {
+    // call to check if whitelisted and set state
+    prevState.whitelisted = await isWhitelisted(userAddress);
+  });
 
   if (frameData) {
-    console.log("FID: ", fid);
-
     userData = await getUserData(fid);
-    userAddress = await getAddressFromUserData(userData);
+    const userAddress = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
+    // userAddress = await getAddressFromUserData(userData);
     console.log("userAddress from userData for claim route", userAddress);
-
-    whitelisted = await isWhitelisted(userAddress);
   } else {
     console.error("Bad Frame Data.");
   }
 
-  console.log("whitelisted", whitelisted);
-  const warpcastWallet = userData?.verified_addresses?.[0];
-  console.log("warpcastWallet", warpcastWallet);
+  console.log("whitelisted", state.whitelisted);
 
-  if (!whitelisted) {
+  if (!state.whitelisted) {
     return c.res({
       image: renderImage(
         "Please claim a ride before minting your ticket.",
@@ -123,13 +145,7 @@ app.frame("/claim", async (c) => {
     return c.res({
       image: renderImage("", "/TarkinClaim.jpg"),
       intents: [
-        // TODO: mint natively, then redirect to share.
-        // <Button.Link href="https://claims.suiteview.org">
-        //   Mint your Ticket
-        // </Button.Link>
-        <Button.Transaction target="/mintTicket">
-          Mint your Ticket
-        </Button.Transaction>,
+        <Button.Transaction target="/mint">Mint</Button.Transaction>,
         status === "response" && <Button.Reset>Cancel</Button.Reset>,
       ],
     });
@@ -138,8 +154,18 @@ app.frame("/claim", async (c) => {
 
 app.frame("/share", async (c) => {
   const { frameData, verified, status } = c;
-  const userData = await getUserData(frameData?.fid!);
 
+  if (!verified) {
+    return c.res({
+      image: renderImage(
+        "Not Verified frame message.",
+        "/SuiteViewCryptoRidesMiamiBackground.png"
+      ),
+      intents: [<Button.Reset>Reset</Button.Reset>],
+    });
+  }
+
+  const userData = await getUserData(frameData?.fid!);
   let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
 
   return c.res({
@@ -153,32 +179,6 @@ app.frame("/share", async (c) => {
     ],
   });
 });
-
-const getAddressFromUserData = async (userData: any) => {
-  try {
-    console.log("userData", userData);
-    // Add null checks and provide default values
-    if (
-      !userData ||
-      !userData.verified_addresses ||
-      !Array.isArray(userData.verified_addresses)
-    ) {
-      console.log("No valid user data or addresses found");
-      return null;
-    }
-
-    // Make sure there's at least one address before accessing index 0
-    if (userData.verified_addresses.length === 0) {
-      console.log("User has no addresses");
-      return null;
-    }
-
-    return userData.verified_addresses[0];
-  } catch (error) {
-    console.error("Error getting address from user data:", error);
-    return null;
-  }
-};
 
 function renderImage(content: string, image: string | undefined) {
   return (

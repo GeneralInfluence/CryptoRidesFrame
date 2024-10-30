@@ -1,6 +1,10 @@
 import { ReactNode } from "react";
 import { Abi, Address } from "viem";
 
+export type State = {
+  whitelisted: boolean;
+};
+
 // https://docs.opensea.io/docs/metadata-standards
 export type NFTMetadata = {
   description: string;

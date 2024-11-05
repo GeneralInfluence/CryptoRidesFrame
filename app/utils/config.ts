@@ -7,7 +7,7 @@ export const PAYMASTER_URL =
   process.env.NEXT_PUBLIC_PAYMASTER_AND_BUNDLER_ENDPOINT;
 
 export const contractConfig: ContractConfig = {
-  alchemyApiKey: process.env.ALCHEMY_API_KEY!,
+  alchemyApiKey: process.env.NEXT_PUBLIC_RPC_KEY!,
   // Base Mainnet contract address
   contractAddress: "0xD44f7B0ef9159959fcC105f45Ed7266C2181F925" as Address,
   contractAbi: CryptoRidesNFTAbi,

@@ -2,11 +2,14 @@
 
 import { neynarSDKClient } from "../utils/neynar";
 import { createNeynar } from "frog/middlewares";
+import { neynar } from "frog/hubs";
 
 export const useNeynar = () => {
-  const neynar = createNeynar({
+  const neynarFrogMid = createNeynar({
     apiKey: process.env.NEYNAR_API_KEY as string,
   });
+
+  const neynarHub = neynar({apiKey: process.env.NEYNAR_API_KEY as string}); //"NEYNAR_FROG_FM"})
 
   const neynarSDK = neynarSDKClient;
 
@@ -38,7 +41,8 @@ export const useNeynar = () => {
   };
 
   return {
-    neynar,
+    neynarFrogMid,
+    neynarHub,
     getUserData,
     userAddressLookup,
     validateAction,

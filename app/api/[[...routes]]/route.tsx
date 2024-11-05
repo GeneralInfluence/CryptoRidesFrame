@@ -12,19 +12,20 @@ import { handle } from "frog/next";
 import { serveStatic } from "frog/serve-static";
 import { Address } from "viem";
 
-const { neynar, getUserData } = useNeynar();
+// import { neynar } from "frog/hubs";
+const { neynarFrogMid, neynarHub, getUserData } = useNeynar();
 
 const app = new Frog<{ State: State }>({
   initialState: {
     whitelisted: false,
   },
-  hub: neynar.hub(),
+  hub: neynarHub, // neynar({apiKey: "NEYNAR_FROG_FM"}),// process.env.NEYNAR_API_KEY}), //.hub(),
   assetsPath: "/",
   basePath: "/api",
   title: "Crypto Rides",
   verify: "silent",
 }).use(
-  neynar.middleware({
+  neynarFrogMid.middleware({
     features: ["interactor", "cast"],
   })
 );
@@ -40,6 +41,12 @@ app.frame("/", (c) => {
     ],
   });
 });
+
+app.image("/api",(c) => {
+  return c.res({
+    image: renderImage("","/SuiteViewCryptoRidesMiamiBackground.png"),
+  })
+})
 
 app.frame("/donate", async (c) => {
   const { status, buttonValue, inputText, frameData } = c;
@@ -65,20 +72,39 @@ app.frame("/donate", async (c) => {
 });
 
 app.transaction("/mint", async (c) => {
-  const { frameData, verified, address } = c;
+  const { frameData, verified } = c;
 
-  if (!verified) {
-    return c.error(new Error("something went wrong..."));
-  }
+  if (!verified || frameData==undefined) {
+    return c.error(new Error("The mint frame is not verified, or there's no frameData."));
+  } 
 
-  const userData = await getUserData(frameData?.fid!);
-  const userAddress: Address = await getAddressFromUserData(userData);
+  const fid: number = frameData.fid;
+  let userAddress: Address | null = null; // frameData.address as Address;
+  const userData = await getUserData(fid);
+  const fidUserAddresses: Array<Address> | null = await getAddressFromUserData(userData);
+  console.log("fidUserAddresses from userData fid for claim route: ", fidUserAddresses);
+  if (fidUserAddresses===null) {
+    return c.error(new Error("Can't mint to a non-existant address..."));
+  } 
 
+  let whitelisted: boolean = false;
+  if (fidUserAddresses != null) {
+    for (let i=0; i<fidUserAddresses.length; i++) {
+      // call to check if whitelisted and set state
+      if (await isWhitelisted(fidUserAddresses[i])) { 
+        whitelisted = true; 
+        userAddress = fidUserAddresses[i] as Address;
+        break 
+      };
+    }
+  } 
+
+  // TODO: I need to either pass the right address in, or go through the whitelist check again.
   return c.contract({
     abi: CryptoRidesNFTAbi,
     to: contractConfig.contractAddress,
     functionName: "safeMint",
-    args: [userAddress, ipfsNftMetadataHash],
+    args: [userAddress as Address, ipfsNftMetadataHash],
     chainId: "eip155:8453",
   });
 });
@@ -98,35 +124,40 @@ app.transaction("/mint", async (c) => {
 
 app.frame("/claim", async (c) => {
   const { frameData, verified, status, deriveState } = c;
-  const { fid, castId } = frameData;
-  const whitelisted: boolean = false;
-  const userAddress = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
-  let userData;
 
-  if (!verified) {
+  console.log("verified :: ",verified);
+  console.log("frameData :: ",frameData);
+  if (!verified || frameData==undefined) {
     return c.res({
       image: renderImage(
-        "Not Verified frame message.",
+        "This frame is not verified.",
         "/SuiteViewCryptoRidesMiamiBackground.png"
       ),
       intents: [<Button.Reset>Reset</Button.Reset>],
     });
-  }
+  } 
+
+  const fid: number = frameData.fid;
+  let userAddress: Address = frameData.address as Address; // = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
+  console.log("Frame claim userAddress: ", userAddress)
+
+  const userData = await getUserData(fid);
+  const fidUserAddresses: Array<Address> | null = await getAddressFromUserData(userData);
+  console.log("fidUserAddresses from userData fid for claim route: ", fidUserAddresses);
+
   const state = await deriveState(async (prevState) => {
-    // call to check if whitelisted and set state
-    prevState.whitelisted = await isWhitelisted(userAddress);
+    if (fidUserAddresses != null) {
+      for (let i=0; i<fidUserAddresses.length; i++) {
+        // call to check if whitelisted and set state
+        if (await isWhitelisted(fidUserAddresses[i])) { 
+          prevState.whitelisted = true; 
+          userAddress = fidUserAddresses[i];
+          break 
+        };
+      }
+    } 
   });
-
-  if (frameData) {
-    userData = await getUserData(fid);
-    const userAddress = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
-    // userAddress = await getAddressFromUserData(userData);
-    console.log("userAddress from userData for claim route", userAddress);
-  } else {
-    console.error("Bad Frame Data.");
-  }
-
-  console.log("whitelisted", state.whitelisted);
+  console.log("whitelisted: ", state.whitelisted);
 
   if (!state.whitelisted) {
     return c.res({
@@ -153,21 +184,41 @@ app.frame("/claim", async (c) => {
 });
 
 app.frame("/share", async (c) => {
-  const { frameData, verified, status } = c;
+  const { frameData, verified, status, deriveState } = c;
 
-  if (!verified) {
+  if (!verified || frameData==undefined) {
     return c.res({
       image: renderImage(
-        "Not Verified frame message.",
+        "This frame is not verified.",
         "/SuiteViewCryptoRidesMiamiBackground.png"
       ),
       intents: [<Button.Reset>Reset</Button.Reset>],
     });
-  }
+  } 
 
-  const userData = await getUserData(frameData?.fid!);
-  let userAddress: Address = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7"; // userData.address;
+  const fid: number = frameData.fid;
+  let userAddress: Address = frameData.address as Address; // = "0xa1784AA2de3C93D60Aa47242a6e010fe273515D7";
+  console.log("Frame claim userAddress: ", userAddress)
 
+  const userData = await getUserData(fid);
+  const fidUserAddresses: Array<Address> | null = await getAddressFromUserData(userData);
+  console.log("fidUserAddresses from userData fid for claim route: ", fidUserAddresses);
+
+  const state = await deriveState(async (prevState) => {
+    if (fidUserAddresses != null) {
+      for (let i=0; i<fidUserAddresses.length; i++) {
+        // call to check if whitelisted and set state
+        if (await isWhitelisted(fidUserAddresses[i])) { 
+          prevState.whitelisted = true; 
+          userAddress = fidUserAddresses[i];
+          break 
+        };
+      }
+    } 
+  });
+  console.log("whitelisted: ", state.whitelisted);
+
+  // TODO: I'm redirecting to the same frame, I want them to share in warpcast.
   return c.res({
     image: renderImage("Your Ride is Ready.", "/CRYPTO-RIDES.png"),
     intents: [
